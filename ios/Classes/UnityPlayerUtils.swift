@@ -140,7 +140,7 @@ var sharedApplication: UIApplication?
 
             self.listenAppState()
 
-            completed(controller?.rootView)
+//            completed(controller?.rootView)
         }
 
     }

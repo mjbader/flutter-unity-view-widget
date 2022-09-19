@@ -37,7 +37,7 @@ public class FLTUnityWidgetController: NSObject, FLTUnityOptionsSink, FlutterPla
         self.attachView()
     }
 
-    func methodHandler(_ call: FlutterMethodCall, result: FlutterResult) {
+    func methodHandler(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         if call.method == "unity#dispose" {
             self.dispose()
             result(nil)
@@ -49,8 +49,9 @@ public class FLTUnityWidgetController: NSObject, FLTUnityOptionsSink, FlutterPla
                 let _isUnloaded = GetUnityPlayerUtils().isUnityLoaded()
                 result(_isUnloaded)
             } else if call.method == "unity#createUnityPlayer" {
-                startUnityIfNeeded()
-                result(nil)
+                startUnityIfNeeded {
+                    result(nil)
+                }
             } else if call.method == "unity#isPaused" {
                 let _isPaused = GetUnityPlayerUtils().isUnityPaused()
                 result(_isPaused)
@@ -85,27 +86,27 @@ public class FLTUnityWidgetController: NSObject, FLTUnityOptionsSink, FlutterPla
         return _rootView;
     }
 
-    private func startUnityIfNeeded() {
-        GetUnityPlayerUtils().createPlayer(completed: { [self] (view: UIView?) in
-
+    private func startUnityIfNeeded(completion: @escaping () -> Void) {
+        GetUnityPlayerUtils().createPlayer(completed: { (view: UIView?) in
+            completion();
         })
     }
 
     func attachView() {
-        startUnityIfNeeded()
+        startUnityIfNeeded { [self] in
+            let unityView = GetUnityPlayerUtils().ufw?.appController()?.rootView
+            if let superview = unityView?.superview {
+                unityView?.removeFromSuperview()
+                superview.layoutIfNeeded()
+            }
 
-        let unityView = GetUnityPlayerUtils().ufw?.appController()?.rootView
-        if let superview = unityView?.superview {
-            unityView?.removeFromSuperview()
-            superview.layoutIfNeeded()
+            if let unityView = unityView {
+                _rootView.addSubview(unityView)
+                _rootView.layoutIfNeeded()
+                self.channel?.invokeMethod("events#onViewReattached", arguments: "")
+            }
+            GetUnityPlayerUtils().resume()
         }
-
-        if let unityView = unityView {
-            _rootView.addSubview(unityView)
-            _rootView.layoutIfNeeded()
-            self.channel?.invokeMethod("events#onViewReattached", arguments: "")
-        }
-        GetUnityPlayerUtils().resume()
     }
 
     func reattachView() {
